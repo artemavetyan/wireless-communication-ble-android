@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">My BLE Application</string>
+    <string name="scan">Scan</string>
+    <string name="scanning">Scanning</string>
+    <string name="stop_scan">Stopped scanning</string>
+    <string name="found">Found</string>
+    <string name="connected">Connected</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="device_found">Device found</string>
+    <string name="services_discovered">Services discovered</string>
+    <string name="gatt_service_connected">GATT Service connected</string>
+    <string name="play">Play</string>
+
+    <string-array name="songs_array">
+        <item>Happy birthday</item>
+        <item>Wilhelmus</item>
+    </string-array>
+
+</resources>
