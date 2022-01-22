@@ -13,6 +13,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
+import android.text.Editable;
 import android.util.Log;
 
 import androidx.annotation.RequiresApi;
@@ -32,6 +33,8 @@ public class MyBluetoothService extends Service {
     public final static String ACTION_GATT_DISCONNECTED =
             "my.ble.app.ACTION_GATT_DISCONNECTED";
     private static final String ACTION_DATA_AVAILABLE = "my.ble.app.ACTION_DATA_AVAILABLE";
+    public final static String DISPLAY_MESSAGE_SENT =
+            "my.ble.app.DISPLAY_MESSAGE_SENT";
 
     private static final String EXTRA_DATA = "my.ble.app.EXTRA_DATA";
 
@@ -40,13 +43,14 @@ public class MyBluetoothService extends Service {
     public final static String PLAY_SONG_CHAR_UUID =
             "0b001";
 
-    public final static String LED_SERVICE_UUID =
-            "0a000";
-    public final static String LED_CHAR_UUID =
-            "0a001";
-    private BluetoothGattCharacteristic playSongChar;
+    public final static String LCD_SERVICE_UUID =
+            "0c000";
+    public final static String DISPLAY_MESSAGE_CHAR_UUID =
+            "0c001";
 
-    private BluetoothGattCharacteristic ledChar;
+    private BluetoothGattCharacteristic playSongChar;
+    private BluetoothGattCharacteristic displayMessageChar;
+
 
     private static final int TRANSPORT_LE = 2;
 
@@ -189,31 +193,41 @@ public class MyBluetoothService extends Service {
                 broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
             }
         }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+            Log.w(TAG, "onCharacteristicWrite");
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.w(TAG, "GATT_SUCCESS");
+
+                if (characteristic.getUuid().equals(displayMessageChar.getUuid())) {
+                    Log.w(TAG, "equals(displayMessageChar.getUuid()");
+                    broadcastUpdate(DISPLAY_MESSAGE_SENT);
+                }
+
+            }
+        }
     };
 
     private void retrieveServicesAndCharacteristics() {
         for (BluetoothGattService gattService : getSupportedGattServices()) {
             if (gattService.getUuid().toString().contains(MUSIC_SERVICE_UUID)) {
-                System.out.println("Music service found!");
-                System.out.println(gattService.getCharacteristics());
                 for (BluetoothGattCharacteristic bluetoothGattCharacteristic : gattService.getCharacteristics()) {
                     Log.w(TAG, "CHAR DETECTED - " + bluetoothGattCharacteristic.getUuid().toString());
-
                     if (bluetoothGattCharacteristic.getUuid().toString().contains(PLAY_SONG_CHAR_UUID)) {
                         this.playSongChar = bluetoothGattCharacteristic;
                     }
                 }
 
             }
-            if (gattService.getUuid().toString().contains(LED_SERVICE_UUID)) {
+
+            if (gattService.getUuid().toString().contains(LCD_SERVICE_UUID)) {
                 for (BluetoothGattCharacteristic bluetoothGattCharacteristic : gattService.getCharacteristics()) {
                     Log.w(TAG, "CHAR DETECTED - " + bluetoothGattCharacteristic.getUuid().toString());
-                    if (bluetoothGattCharacteristic.getUuid().toString().contains(LED_CHAR_UUID)) {
-                        this.ledChar = bluetoothGattCharacteristic;
+                    if (bluetoothGattCharacteristic.getUuid().toString().contains(DISPLAY_MESSAGE_CHAR_UUID)) {
+                        this.displayMessageChar = bluetoothGattCharacteristic;
                     }
                 }
-
-                System.out.println("LED service found!");
             }
         }
     }
@@ -223,28 +237,6 @@ public class MyBluetoothService extends Service {
         Log.w(TAG, "onBind called");
 
         return binder;
-    }
-
-    public void ledToggle() {
-        Log.w(TAG, "LED CHAR write");
-        String hexValue = "";
-//        byte[] bytes = ByteBuffer.allocate(4).putInt(0).array();
-        byte[] bytes = "a".getBytes();
-
-        System.out.println(Arrays.toString(bytes));
-        this.ledChar.setValue(bytes);
-        this.ledChar.setWriteType(1);
-
-        System.out.println(this.ledChar);
-        System.out.println(this.ledChar.getWriteType());
-        if (!bluetoothGatt.writeCharacteristic(this.ledChar)) {
-            Log.w(TAG, String.format("ERROR: writeCharacteristic failed for characteristic: %s", this.ledChar.getUuid()));
-            completedCommand();
-        } else {
-            Log.w(TAG, String.format("writing <%s> to characteristic <%s>", new String(bytes), this.ledChar.getUuid()));
-            nrTries++;
-        }
-//        this.bluetoothGatt.writeCharacteristic(this.playSongChar);
     }
 
     public void playSong(int currentSongIndex) {
@@ -257,6 +249,19 @@ public class MyBluetoothService extends Service {
             completedCommand();
         } else {
             Log.d(TAG, String.format("writing <%s> to characteristic <%s>", currentSongIndex, this.playSongChar.getUuid()));
+            nrTries++;
+        }
+    }
+
+    public void sendMessage(String messageToSend) {
+
+        this.displayMessageChar.setValue(messageToSend);
+        this.displayMessageChar.setWriteType(1);
+        if (!bluetoothGatt.writeCharacteristic(this.displayMessageChar)) {
+            Log.e(TAG, String.format("ERROR: writeCharacteristic failed for characteristic: %s", this.displayMessageChar.getUuid()));
+            completedCommand();
+        } else {
+            Log.d(TAG, String.format("writing <%s> to characteristic <%s>", messageToSend, this.displayMessageChar.getUuid()));
             nrTries++;
         }
     }

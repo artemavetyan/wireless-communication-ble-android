@@ -18,7 +18,7 @@ public class MyBLEScanner {
     private Handler handler;
 
     // Stops scanning after 30 seconds.
-    private static final long SCAN_PERIOD = 30000;
+    private static final long SCAN_PERIOD = 10000;
 
     public MyBLEScanner(MainActivity mainActivity, BluetoothLeScanner bleScanner) {
         this.mainActivity = mainActivity;

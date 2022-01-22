@@ -3,6 +3,7 @@ package com.example.mybleapplication;
 import static android.content.ContentValues.TAG;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.bluetooth.BluetoothGattService;
@@ -12,6 +13,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
@@ -19,6 +21,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -29,10 +32,13 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
 
     private MyBluetoothService bluetoothService;
     private String deviceAddress;
+
     private TextView tvConnectionStatus;
     private Spinner spinner;
     private ArrayAdapter<CharSequence> songsArrayAdapter;
     private Button btPlay;
+    private EditText etDisplayMessage;
+    private Button btSendMessage;
 
     private int currentSongIndex;
 
@@ -60,13 +66,27 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
             @Override
             public void onClick(View view) {
                 bluetoothService.playSong(currentSongIndex);
-//                bluetoothService.ledToggle();
-                Toast.makeText(DeviceControlActivity.this, "Sending " + currentSongIndex, Toast.LENGTH_SHORT).show();
-
+                Toast.makeText(DeviceControlActivity.this, "Sending song #" + currentSongIndex, Toast.LENGTH_SHORT).show();
             }
         });
 
         this.btPlay.setEnabled(false);
+
+        this.etDisplayMessage = (EditText) findViewById(R.id.etDisplayMessage);
+        this.etDisplayMessage.setEnabled(false);
+
+        this.btSendMessage = (Button) findViewById(R.id.btSend);
+
+        this.btSendMessage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                bluetoothService.sendMessage(etDisplayMessage.getText().toString());
+                Toast.makeText(DeviceControlActivity.this, "Sending message" + etDisplayMessage.getText(), Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+        this.btSendMessage.setEnabled(false);
 
         Intent intent = getIntent();
         this.deviceAddress = intent.getStringExtra(MainActivity.EXTRA_MESSAGE);
@@ -86,6 +106,7 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onResume() {
         super.onResume();
@@ -106,14 +127,23 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
+            System.out.println(action);
             if (MyBluetoothService.ACTION_GATT_CONNECTED.equals(action)) {
                 tvConnectionStatus.setText(getResources().getString(R.string.connected));
             } else if (MyBluetoothService.ACTION_GATT_DISCONNECTED.equals(action)) {
                 tvConnectionStatus.setText(getResources().getString(R.string.disconnected));
+                if (bluetoothService != null) {
+                    tvConnectionStatus.setText(getResources().getString(R.string.reconnecting));
+                    final boolean result = bluetoothService.connect(deviceAddress);
+                    Log.d(TAG, "Connect request result=" + result);
+                }
             } else if (MyBluetoothService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 tvConnectionStatus.setText(getResources().getString(R.string.services_discovered));
                 // Show all the supported services and characteristics on the user interface.
                 displayGattServices(bluetoothService.getSupportedGattServices());
+            } else if (MyBluetoothService.DISPLAY_MESSAGE_SENT.equals(action)) {
+                System.out.println("MyBluetoothService.DISPLAY_MESSAGE_SENT");
+                etDisplayMessage.setText("");
             }
         }
     };
@@ -151,16 +181,10 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
     private void displayGattServices(List<BluetoothGattService> gattServices) {
         if (gattServices == null) return;
         System.out.println("Amount of services - " + gattServices.size());
-//        for (BluetoothGattService gattService : gattServices) {
-//            if (gattService.getUuid().toString().contains(MUSIC_SERVICE_UUID)) {
-        System.out.println("Music service found!");
         this.spinner.setEnabled(true);
         this.btPlay.setEnabled(true);
-//            }
-//            if (gattService.getUuid().toString().contains(LED_SERVICE_UUID)) {
-//        System.out.println("LED service found!");
-//            }
-//        }
+        this.etDisplayMessage.setEnabled(true);
+        this.btSendMessage.setEnabled(true);
     }
 
 }

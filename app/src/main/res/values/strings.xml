@@ -6,11 +6,15 @@
     <string name="found">Found</string>
     <string name="connected">Connected</string>
     <string name="disconnected">Disconnected</string>
+    <string name="reconnecting">Reconnecting</string>
     <string name="device_found">Device found</string>
     <string name="services_discovered">Services discovered</string>
     <string name="gatt_service_connected">GATT Service connected</string>
     <string name="play">Play</string>
+    <string name="type_your_message">Type your message</string>
+    <string name="send_message">Send</string>
 
+    type_your_message
     <string-array name="songs_array">
         <item>Happy birthday</item>
         <item>Wilhelmus</item>
