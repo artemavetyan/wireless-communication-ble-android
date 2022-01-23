@@ -13,6 +13,9 @@
     <string name="play">Play</string>
     <string name="type_your_message">Type your message</string>
     <string name="send_message">Send</string>
+    <string name="temperature">Temperature</string>
+    <string name="get_temperature">Read</string>
+    <string name="subscribe_temperature">Receive updates</string>
 
     type_your_message
     <string-array name="songs_array">

@@ -44,9 +44,7 @@
         android:ems="10"
         android:hint="@string/type_your_message"
         android:inputType="textPersonName"
-        android:lines="2"
-        android:minLines="2"
-        android:maxLength="16"
+        android:maxLength="32"
         app:layout_constraintEnd_toEndOf="@+id/spinner"
         app:layout_constraintStart_toStartOf="@+id/spinner"
         app:layout_constraintTop_toBottomOf="@+id/spinner" />
@@ -59,4 +57,35 @@
         app:layout_constraintBottom_toBottomOf="@+id/etDisplayMessage"
         app:layout_constraintEnd_toEndOf="@+id/btPLay"
         app:layout_constraintTop_toTopOf="@+id/etDisplayMessage" />
+
+    <TextView
+        android:id="@+id/tvTemperature"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:text="@string/temperature"
+        app:layout_constraintBottom_toBottomOf="@+id/btGetTemperature"
+        app:layout_constraintStart_toStartOf="@+id/etDisplayMessage"
+        app:layout_constraintTop_toBottomOf="@+id/etDisplayMessage" />
+
+    <Button
+        android:id="@+id/btGetTemperature"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:text="@string/get_temperature"
+        app:layout_constraintEnd_toStartOf="@+id/btSubsribeTemperature"
+        app:layout_constraintTop_toTopOf="@+id/btSubsribeTemperature" />
+
+    <Button
+        android:id="@+id/btSubsribeTemperature"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="80dp"
+        android:text="@string/subscribe_temperature"
+        app:layout_constraintEnd_toEndOf="@+id/btSend"
+        app:layout_constraintStart_toStartOf="@+id/btSend"
+        app:layout_constraintTop_toBottomOf="@+id/btSend" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -6,7 +6,6 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -26,8 +25,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.List;
-
 public class DeviceControlActivity extends AppCompatActivity implements AdapterView.OnItemSelectedListener {
 
     private MyBluetoothService bluetoothService;
@@ -39,6 +36,11 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
     private Button btPlay;
     private EditText etDisplayMessage;
     private Button btSendMessage;
+
+    private TextView tvTemperature;
+    private Button btGetTemperature;
+    private Button btSubscribeToTemperature;
+
 
     private int currentSongIndex;
 
@@ -81,12 +83,35 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
             @Override
             public void onClick(View view) {
                 bluetoothService.sendMessage(etDisplayMessage.getText().toString());
-                Toast.makeText(DeviceControlActivity.this, "Sending message" + etDisplayMessage.getText(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(DeviceControlActivity.this, "Sending message: " + etDisplayMessage.getText(), Toast.LENGTH_SHORT).show();
 
             }
         });
 
         this.btSendMessage.setEnabled(false);
+
+        this.tvTemperature = (TextView) findViewById(R.id.tvTemperature);
+        this.tvTemperature.setEnabled(false);
+
+        this.btGetTemperature = (Button) findViewById(R.id.btGetTemperature);
+        this.btGetTemperature.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                bluetoothService.readTemperature();
+                Toast.makeText(DeviceControlActivity.this, "Reading temperature", Toast.LENGTH_SHORT).show();
+            }
+        });
+        this.btGetTemperature.setEnabled(false);
+
+        this.btSubscribeToTemperature = (Button) findViewById(R.id.btSubsribeTemperature);
+        this.btSubscribeToTemperature.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                bluetoothService.subscribeToTemperatureReadings();
+                Toast.makeText(DeviceControlActivity.this, "Reading temperature", Toast.LENGTH_SHORT).show();
+            }
+        });
+        this.btSubscribeToTemperature.setEnabled(false);
 
         Intent intent = getIntent();
         this.deviceAddress = intent.getStringExtra(MainActivity.EXTRA_MESSAGE);
@@ -126,11 +151,13 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
     private final BroadcastReceiver gattUpdateReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            System.out.println("BroadcastReceiver");
             final String action = intent.getAction();
             System.out.println(action);
             if (MyBluetoothService.ACTION_GATT_CONNECTED.equals(action)) {
                 tvConnectionStatus.setText(getResources().getString(R.string.connected));
             } else if (MyBluetoothService.ACTION_GATT_DISCONNECTED.equals(action)) {
+                changeUIState(false);
                 tvConnectionStatus.setText(getResources().getString(R.string.disconnected));
                 if (bluetoothService != null) {
                     tvConnectionStatus.setText(getResources().getString(R.string.reconnecting));
@@ -140,7 +167,11 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
             } else if (MyBluetoothService.ACTION_GATT_SERVICES_DISCOVERED.equals(action)) {
                 tvConnectionStatus.setText(getResources().getString(R.string.services_discovered));
                 // Show all the supported services and characteristics on the user interface.
-                displayGattServices(bluetoothService.getSupportedGattServices());
+                changeUIState(true);
+            } else if (MyBluetoothService.ACTION_DATA_AVAILABLE.equals(action)) {
+                System.out.println("ACTION_DATA_AVAILABLE");
+                String textToShow = intent.getStringExtra(MyBluetoothService.EXTRA_DATA) + "°C";
+                tvTemperature.setText(textToShow);
             } else if (MyBluetoothService.DISPLAY_MESSAGE_SENT.equals(action)) {
                 System.out.println("MyBluetoothService.DISPLAY_MESSAGE_SENT");
                 etDisplayMessage.setText("");
@@ -153,6 +184,9 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
         intentFilter.addAction(MyBluetoothService.ACTION_GATT_CONNECTED);
         intentFilter.addAction(MyBluetoothService.ACTION_GATT_SERVICES_DISCOVERED);
         intentFilter.addAction(MyBluetoothService.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(MyBluetoothService.ACTION_DATA_AVAILABLE);
+        intentFilter.addAction(MyBluetoothService.DISPLAY_MESSAGE_SENT);
+
         return intentFilter;
     }
 
@@ -178,13 +212,13 @@ public class DeviceControlActivity extends AppCompatActivity implements AdapterV
         }
     };
 
-    private void displayGattServices(List<BluetoothGattService> gattServices) {
-        if (gattServices == null) return;
-        System.out.println("Amount of services - " + gattServices.size());
-        this.spinner.setEnabled(true);
-        this.btPlay.setEnabled(true);
-        this.etDisplayMessage.setEnabled(true);
-        this.btSendMessage.setEnabled(true);
+    private void changeUIState(boolean isEnabled) {
+        this.spinner.setEnabled(isEnabled);
+        this.btPlay.setEnabled(isEnabled);
+        this.etDisplayMessage.setEnabled(isEnabled);
+        this.btSendMessage.setEnabled(isEnabled);
+        this.tvTemperature.setEnabled(isEnabled);
+        this.btGetTemperature.setEnabled(isEnabled);
+        this.btSubscribeToTemperature.setEnabled(isEnabled);
     }
-
 }

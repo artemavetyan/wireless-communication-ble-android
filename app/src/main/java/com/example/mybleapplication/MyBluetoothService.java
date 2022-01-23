@@ -1,11 +1,15 @@
 package com.example.mybleapplication;
 
+import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_INDICATE;
+import static android.bluetooth.BluetoothGattCharacteristic.PROPERTY_NOTIFY;
+
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
@@ -22,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
+import java.util.UUID;
 
 public class MyBluetoothService extends Service {
 
@@ -32,24 +37,29 @@ public class MyBluetoothService extends Service {
             "my.ble.app.ACTION_GATT_SERVICES_DISCOVERED";
     public final static String ACTION_GATT_DISCONNECTED =
             "my.ble.app.ACTION_GATT_DISCONNECTED";
-    private static final String ACTION_DATA_AVAILABLE = "my.ble.app.ACTION_DATA_AVAILABLE";
+    public static final String ACTION_DATA_AVAILABLE = "my.ble.app.ACTION_DATA_AVAILABLE";
     public final static String DISPLAY_MESSAGE_SENT =
             "my.ble.app.DISPLAY_MESSAGE_SENT";
-
-    private static final String EXTRA_DATA = "my.ble.app.EXTRA_DATA";
+    public static final String EXTRA_DATA = "my.ble.app.EXTRA_DATA";
 
     public final static String MUSIC_SERVICE_UUID =
             "0b000";
     public final static String PLAY_SONG_CHAR_UUID =
             "0b001";
-
     public final static String LCD_SERVICE_UUID =
             "0c000";
     public final static String DISPLAY_MESSAGE_CHAR_UUID =
             "0c001";
+    public final static String TEMPERATURE_SERVICE_UUID =
+            "0d000";
+    public final static String TEMPERATURE_CHAR_UUID =
+            "0d001";
+    private static final String CCC_DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805f9b34fb";
+    ;
 
     private BluetoothGattCharacteristic playSongChar;
     private BluetoothGattCharacteristic displayMessageChar;
+    private BluetoothGattCharacteristic temperatureChar;
 
 
     private static final int TRANSPORT_LE = 2;
@@ -84,6 +94,7 @@ public class MyBluetoothService extends Service {
         bluetoothGatt.readCharacteristic(characteristic);
     }
 
+
     public boolean initialize() {
         Log.w(TAG, "Init called");
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -92,6 +103,34 @@ public class MyBluetoothService extends Service {
             return false;
         }
         return true;
+    }
+
+    public void subscribeToTemperatureReadings() {
+        if (bluetoothGatt == null) {
+            Log.w(TAG, "BluetoothGatt not initialized");
+            return;
+        }
+        bluetoothGatt.setCharacteristicNotification(temperatureChar, true);
+
+        // This is specific to Heart Rate Measurement.
+        BluetoothGattDescriptor descriptor = temperatureChar.getDescriptor(UUID.fromString(CCC_DESCRIPTOR_UUID));
+        if (descriptor == null) {
+            Log.e(TAG, String.format("ERROR: Could not get CCC descriptor for characteristic %s", temperatureChar.getUuid()));
+            return;
+        }
+
+//        byte[] value;
+//        int properties = temperatureChar.getProperties();
+//        if ((properties & PROPERTY_NOTIFY) > 0) {
+//            value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
+//        } else if ((properties & PROPERTY_INDICATE) > 0) {
+//            BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+//        } else {
+//            Log.e(TAG, String.format("ERROR: Characteristic %s does not have notify or indicate property", temperatureChar.getUuid()));
+//            return;
+//        }
+        descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+        bluetoothGatt.writeDescriptor(descriptor);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -143,14 +182,25 @@ public class MyBluetoothService extends Service {
         final byte[] data = characteristic.getValue();
         if (data != null && data.length > 0) {
             final StringBuilder stringBuilder = new StringBuilder(data.length);
-            for (byte byteChar : data)
+            for (byte byteChar : data) {
                 stringBuilder.append(String.format("%02X ", byteChar));
-            intent.putExtra(EXTRA_DATA, new String(data) + "\n" +
+            }
+            String s = new String(data);
+//            intent.putExtra(EXTRA_DATA, new String(data) + "\n" +
+//                    stringBuilder.toString());
+            int temperature = Integer.parseInt(stringBuilder.toString().trim(), 16);
+
+            intent.putExtra(EXTRA_DATA, temperature + "");
+            Log.w(TAG, "broadcast - " + new String(data) + "\n" +
                     stringBuilder.toString());
+
         }
+
 //        }
+        Log.w(TAG, "sendBroadcast - ");
         sendBroadcast(intent);
     }
+
 
     private final BluetoothGattCallback bluetoothGattCallback = new BluetoothGattCallback() {
         @Override
@@ -166,6 +216,11 @@ public class MyBluetoothService extends Service {
                 // disconnected from the GATT Server
                 broadcastUpdate(ACTION_GATT_DISCONNECTED);
             }
+        }
+
+        @Override
+        public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+            broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
         }
 
         @Override
@@ -189,7 +244,9 @@ public class MyBluetoothService extends Service {
                 BluetoothGattCharacteristic characteristic,
                 int status
         ) {
+            Log.w(TAG, "onCharacteristicRead");
             if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.w(TAG, "GATT_SUCCESS");
                 broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
             }
         }
@@ -207,6 +264,7 @@ public class MyBluetoothService extends Service {
 
             }
         }
+
     };
 
     private void retrieveServicesAndCharacteristics() {
@@ -226,6 +284,15 @@ public class MyBluetoothService extends Service {
                     Log.w(TAG, "CHAR DETECTED - " + bluetoothGattCharacteristic.getUuid().toString());
                     if (bluetoothGattCharacteristic.getUuid().toString().contains(DISPLAY_MESSAGE_CHAR_UUID)) {
                         this.displayMessageChar = bluetoothGattCharacteristic;
+                    }
+                }
+            }
+
+            if (gattService.getUuid().toString().contains(TEMPERATURE_SERVICE_UUID)) {
+                for (BluetoothGattCharacteristic bluetoothGattCharacteristic : gattService.getCharacteristics()) {
+                    Log.w(TAG, "CHAR DETECTED - " + bluetoothGattCharacteristic.getUuid().toString());
+                    if (bluetoothGattCharacteristic.getUuid().toString().contains(TEMPERATURE_CHAR_UUID)) {
+                        this.temperatureChar = bluetoothGattCharacteristic;
                     }
                 }
             }
@@ -304,6 +371,10 @@ public class MyBluetoothService extends Service {
         isRetrying = false;
         commandQueue.poll();
         nextCommand();
+    }
+
+    public void readTemperature() {
+        this.readCharacteristic(this.temperatureChar);
     }
 
     class LocalBinder extends Binder {
